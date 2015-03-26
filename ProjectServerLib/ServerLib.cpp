@@ -24,7 +24,13 @@ void ServerLib::updateLoop() {
 			_started = false;
 		} else if(data == 'p') {
 			_bt.println("{\"COMMAND\":\"PING\"}");
+			_connected = true;
+			_lastPing = millis();
 		}
+	}
+
+	if(_connected && ((millis() - _lastPing) > 1000)) {
+		_connected = false;
 	}
 }
 
@@ -38,6 +44,10 @@ void ServerLib::setReadyState(bool state) {
 
 bool ServerLib::hasGameStarted() {
 	return _started;
+}
+
+bool ServerLib::isConnected() {
+	return _connected;
 }
 
 void ServerLib::scorePoint() { 

@@ -10,6 +10,7 @@ class ServerLib {
     void updateLoop();
     void setReadyState(bool state);
     bool hasGameStarted();
+    bool isConnected();
     void scorePoint();
   private:
     String _naam;
@@ -17,6 +18,7 @@ class ServerLib {
     SoftwareSerial _bt;
     bool _started;
     bool _connected;
+    long _lastPing;
 };
 
 #endif
