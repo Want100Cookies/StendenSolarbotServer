@@ -64,7 +64,9 @@ function initComPorts() {
 				robotName: "",
 				game: "",
 				state: "NOTREADY",
-				points: 0
+				points: 0,
+				pingSend: 0,
+				pingRecieved: 0
 			});
 			io.sockets.emit('console', port.comName + "-> available.");
 			// console.log(port.comName + " is available.");
@@ -128,8 +130,11 @@ function processData(data, robotObject) {
 				robotObject.points += json.VALUE;
 				io.sockets.emit("game", robotObject.robotName + " has scored a point. Total: " + robotObject.points);
 				break;
+			case "PING":
+				robotObject.pingRecieved = new Date().getTime();
+				break;
 			default:
-				io.sockets.emit('console', robotObject.comPort.path + "-> JSON not valid");
+				io.sockets.emit('console', robotObject.comPort.path + "-> JSON not valid (" + json.COMMAND + ")");
 				// console.log(robotObject.comPort.path + "-> JSON not valid");
 				break;
 		}
@@ -138,6 +143,21 @@ function processData(data, robotObject) {
 		// console.log(robotObject.comPort.path + "-> Error processing data: " + e);
 	}
 }
+
+var sendPing = setInterval(function() {
+	sPorts.forEach(function(robotObject) {
+		robotObject.comPort.write("p");
+		robotObject.pingSend = new Date().getTime();
+	});
+}, 500);
+
+var checkPing = setInterval(function() {
+	sPorts.forEach(function(robotObject) {
+		if((robotObject.pingRecieved - robotObject.pingSend) >= 1000) {
+			io.sockets.emit("game", robotObject.robotName + " has lost connection.")
+		}
+	});
+}, 1000)
 
 // sp.on('open', function() {
 // 	console.log('Serial port opened');
