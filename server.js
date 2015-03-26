@@ -25,7 +25,29 @@ io.sockets.on('connection', function(socket) {
 
 	socket.on('listActive', function(data) {
 		socket.emit('console', sPorts);
-	})
+	});
+
+	socket.on('getHandshake', function(data) {
+		sPorts.forEach(function(robotObject) {
+			robotObject.comPort.write("h");
+		});
+	});
+
+	socket.on('startGame', function(data) {
+		sPorts.forEach(function(robotObject) {
+			if(robotObject.game == data.value) {
+				robotObject.comPort.write("b");
+			}
+		});
+	});
+
+	socket.on('stopGame', function(data) {
+		sPorts.forEach(function(robotObject) {
+			if(robotObject.game == data.value) {
+				robotObject.comPort.write("s");
+			}
+		});
+	});
 });
 
 var serialport = require('serialport');
@@ -99,7 +121,7 @@ function processData(data, robotObject) {
 			case "STATE":
 				robotObject.state = json.VALUE;
 				if(robotObject.state == "READY") {
-					io.sockets.emit("game", robotObject.robotName + " is ready!");
+					io.sockets.emit("game", robotObject.robotName + " is " + json.VALUE);
 				}
 				break;
 			case "POINT":

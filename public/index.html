@@ -27,6 +27,15 @@
 				$('.list').click(function() {
 					socket.emit('listActive', {});
 				});
+				$('.handshake').click(function() {
+					socket.emit('getHandshake', {});
+				});
+				$('.start').click(function() {
+					socket.emit('startGame', {value: "Capture the flag"});
+				})
+				$('.stop').click(function() {
+					socket.emit('stopGame', {value: "Capture the flag"});
+				})
 			});
 		</script>
 		<style>
@@ -56,6 +65,15 @@
 							</li>
 							<li>
 								<a class="list" href="#">List active comports</a>
+							</li>
+							<li>
+								<a class="handshake" href="#">Get handshake</a>
+							</li>
+							<li>
+								<a class="start" href="#">Start game</a>
+							</li>
+							<li>
+								<a class="stop" href="#">Stop game</a>
 							</li>
 						</ul>
 					</div>
