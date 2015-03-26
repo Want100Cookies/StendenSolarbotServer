@@ -58,6 +58,7 @@ var sPorts = new Array();
 
 function initComPorts() {
 	serialport.list( function(err, ports) {
+		sPorts = new Array();
 		ports.forEach( function(port) {
 			sPorts.push({
 				comPort: new SerialPort(port.comName, { baudrate:9600, parser: serialport.parsers.readline("\n") }, false),
@@ -146,18 +147,29 @@ function processData(data, robotObject) {
 
 var sendPing = setInterval(function() {
 	sPorts.forEach(function(robotObject) {
-		robotObject.comPort.write("p");
-		robotObject.pingSend = new Date().getTime();
+		try {
+			if(robotObject.robotName != "") {
+				robotObject.comPort.write("p");
+				robotObject.pingSend = new Date().getTime();
+			}
+		} catch(e) {
+			console.log(e);
+		}
 	});
 }, 500);
 
 var checkPing = setInterval(function() {
-	sPorts.forEach(function(robotObject) {
-		if((robotObject.pingRecieved - robotObject.pingSend) >= 1000) {
-			io.sockets.emit("game", robotObject.robotName + " has lost connection.")
+	for(var i = 0; i < sPorts.length; i++) {
+		if(sPorts[i].robotName != "") {
+			if((sPorts[i].pingSend - sPorts[i].pingRecieved) >= 1000) {
+				io.sockets.emit("game", sPorts[i].robotName + " has lost connection.")
+				sPorts[i].comPort.close(function(err) {
+					sPorts.splice(i, 1);
+				});
+			}
 		}
-	});
-}, 1000)
+	}
+}, 1000);
 
 // sp.on('open', function() {
 // 	console.log('Serial port opened');
