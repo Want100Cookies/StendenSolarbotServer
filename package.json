@@ -4,7 +4,8 @@
 	"description": "Arduino dingen worden naar een website geschreven",
 	"dependencies": {
 		"socket.io": "latest",
-		"express": "latest"
+		"express": "latest",
+		"mongojs": "latest"
 	},
 	"author": "Pascal Drewes"
 }
