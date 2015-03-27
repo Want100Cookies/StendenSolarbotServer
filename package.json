@@ -5,6 +5,7 @@
 	"dependencies": {
 		"socket.io": "latest",
 		"express": "latest",
+		"serialport": "latest",
 		"mongojs": "latest"
 	},
 	"author": "Pascal Drewes"

@@ -4,7 +4,11 @@ var app = express();
 var wPort = 3700;
 
 app.get("/", function(req, res) {
-	res.sendfile("./public/index.html");
+	res.sendfile("./public/screen.html");
+});
+
+app.get("/admin", function(req, res) {
+	res.sendfile("./public/admin.html");
 });
 
 
@@ -15,7 +19,10 @@ var DB = MongoJS.connect(DBurl, ["robots", "log"]);
 var io = require("socket.io").listen(app.listen(wPort));
 console.log("Listening on port " + wPort);
 
-io.sockets.on('connection', function(socket) {
+
+var adminSockets = io.of('/admin');
+
+adminSockets.on('connection', function(socket) {
 	socket.emit('console', 'Welcome');
 
 	socket.on('ping', function(data) {
@@ -52,6 +59,46 @@ io.sockets.on('connection', function(socket) {
 			}
 		}
 	});
+
+	socket.on('updateCurrent', function(data) {
+		screenSockets.emit('updateCurrent', {
+			playerName1: "Robot 1",
+			playerName2: "Robot 2",
+			playerPoints1: "5",
+			playerPoints2: "2",
+			title: "Capture the flag"
+		});
+	});
+
+	socket.on('updateOverview', function(data) {
+		screenSockets.emit('updateOverview', {
+			'game 1': {
+				playerName1: 'player 1',
+				playerPoints1: '2',
+				playerName2: 'player 2',
+				playerPoints2: '7'
+			},
+			'game 2': {
+				playerName1: 'player 1',
+				playerPoints1: '2',
+				playerName2: 'player 2',
+				playerPoints2: '7'
+			},
+			'game 3': {
+				playerName1: 'player 1',
+				playerPoints1: '2',
+				playerName2: 'player 2',
+				playerPoints2: '7'
+			}
+		});
+	});
+});
+
+
+var screenSockets = io.of('/screen');
+screenSockets.on('connection', function(socket) {
+	socket.emit('console', 'Welcome screen!');
+	console.log("Screen connected.");
 });
 
 var serialport = require('serialport');
@@ -159,8 +206,7 @@ function processData(data, robotObject) {
 				}
 				break;
 			case "POINT":
-				robotObject.points += json.VALUE;
-				io.sockets.emit("game", robotObject.robotName + " has scored a point. Total: " + robotObject.points);
+				processPoint(robotObject);
 				break;
 			case "PING":
 				robotObject.pingRecieved = new Date().getTime();
@@ -173,6 +219,24 @@ function processData(data, robotObject) {
 	} catch (e) {
 		io.sockets.emit('console', robotObject.comPort.path + "-> Error processing data: " + e);
 		// console.log(robotObject.comPort.path + "-> Error processing data: " + e);
+	}
+}
+
+var timedGames = ['Timed game 1', 'Timed game 2'];
+
+var processPoint = function(robotObject) {
+	for(var timedGame in timedGames) {
+		if(robotObject.game == timedGame) {
+
+			return;
+		} else {
+			robotObject.points++;
+			DB.robots.update({robotName: robotObject.robotName}, {$set: {points: robotObject.points}}, function(err, updated) {
+				if(err||!updated) console.log(err);
+			});
+
+			return;
+		}
 	}
 }
 
