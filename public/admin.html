@@ -40,12 +40,10 @@
 							html += "<a href='#' class='stopGame' data-game='" + game.title + "'>Stop game</a>";
 						}
 						html += "</div>";
+						$('.control').html(html);
 					}
 				});
 
-				$('.ping').click(function() {
-					socket.emit('ping', {});
-				});
 				$('.init').click(function() {
 					socket.emit('initComPorts', {});
 				});
@@ -88,19 +86,10 @@
 								<a class="init" href="#">Init comports</a>
 							</li>
 							<li>
-								<a class="ping" href="#">Ping server</a>
-							</li>
-							<li>
-								<a class="current" href="#">update Current on screen</a>
+								<a class="current" href="#">Get sPorts variable (debugging)</a>
 							</li>
 							<li>
 								<a class="handshake" href="#">Get handshake</a>
-							</li>
-							<li>
-								<a class="start" href="#">Start game</a>
-							</li>
-							<li>
-								<a class="stop" href="#">Stop game</a>
 							</li>
 						</ul>
 					</div>
