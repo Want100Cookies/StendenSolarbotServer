@@ -7,6 +7,7 @@
 class ServerLib {
   public:
     ServerLib(int rx, int tx, String naam, String game);
+    ServerLib(SoftwareSerial serial, String naam, String game);
     void updateLoop();
     void setReadyState(bool state);
     bool hasGameStarted();
@@ -16,6 +17,7 @@ class ServerLib {
     String _naam;
     String _game;
     SoftwareSerial _bt;
+    bool _ready;
     bool _started;
     bool _connected;
     long _lastPing;

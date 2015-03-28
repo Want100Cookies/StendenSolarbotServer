@@ -9,9 +9,16 @@ ServerLib::ServerLib(int rx, int tx, String naam, String game) : _bt(rx, tx) {
 	_bt.begin(9600);
 }
 
+ServerLib::ServerLib(SoftwareSerial serial, String naam, String game) : _bt(serial) {
+	_naam = naam;
+	_game = game;
+}
+
 void ServerLib::updateLoop() {
 	if(_bt.available() > 0) {
-		char data = _bt.read();
+		char data = _bt.peek();
+		bool found = true;
+
 		if(data == 'h') {
 			_bt.print("{\"COMMAND\":\"HANDSHAKE\", \"NAME\":\"");
 			_bt.print(_naam);
@@ -26,7 +33,17 @@ void ServerLib::updateLoop() {
 			_bt.println("{\"COMMAND\":\"PING\"}");
 			_connected = true;
 			_lastPing = millis();
+		} else if(data == 'r') {
+			if(_ready) {
+				_bt.println("{\"COMMAND\":\"STATE\", \"VALUE\":\"READY\"}");
+			} else {
+				_bt.println("{\"COMMAND\":\"STATE\", \"VALUE\":\"NOTREADY\"}");
+			}
+		} else {
+			found = false;
 		}
+
+		if(found) _bt.read();
 	}
 
 	if(_connected && ((millis() - _lastPing) > 1000)) {
@@ -35,7 +52,10 @@ void ServerLib::updateLoop() {
 }
 
 void ServerLib::setReadyState(bool state) {
-	if(state) {
+	if(state == _ready) return;
+	_ready = state;
+
+	if(_ready) {
 		_bt.println("{\"COMMAND\":\"STATE\", \"VALUE\":\"READY\"}");
 	} else {
 		_bt.println("{\"COMMAND\":\"STATE\", \"VALUE\":\"NOTREADY\"}");
@@ -50,6 +70,6 @@ bool ServerLib::isConnected() {
 	return _connected;
 }
 
-void ServerLib::scorePoint() { 
+void ServerLib::scorePoint() {
 	_bt.println("{\"COMMAND\":\"POINT\"}");
 }
