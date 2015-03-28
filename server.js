@@ -1,7 +1,13 @@
 var express = require("express");
 var app = express();
 
+
 var wPort = 3700;
+var DBurl = "mongodb://arduino_user:banaan@dbh54.mongolab.com:27547/arduino_server";
+var MongoJS = require("mongojs");
+var DB = MongoJS.connect(DBurl, ["robots", "log"]);
+var LOGLEVEL = 1; // 1 = all; 2 = debugging; 3 = just critical stuf
+
 
 app.get("/", function(req, res) {
 	res.sendfile("./public/screen.html");
@@ -11,11 +17,6 @@ app.get("/admin", function(req, res) {
 	res.sendfile("./public/admin.html");
 });
 
-
-var DBurl = "mongodb://arduino_user:banaan@dbh54.mongolab.com:27547/arduino_server";
-var MongoJS = require("mongojs");
-var DB = MongoJS.connect(DBurl, ["robots", "log"]);
-
 var io = require("socket.io").listen(app.listen(wPort));
 console.log("Listening on port " + wPort);
 
@@ -24,11 +25,6 @@ var adminSockets = io.of('/admin');
 
 adminSockets.on('connection', function(socket) {
 	socket.emit('console', 'Welcome');
-
-	socket.on('ping', function(data) {
-		socket.emit('console', 'pong');
-		console.log("Socket " + socket.id + " pinged the server.");
-	});
 
 	socket.on('initComPorts', function(data) {
 		initComPorts();
@@ -45,60 +41,37 @@ adminSockets.on('connection', function(socket) {
 	});
 
 	socket.on('startGame', function(data) {
+		currentGame = data.value;
+		isPlaying = true;
 		for(var comPortName in sPorts) {
-			if(sPorts[comPortName].game == data.value) {
+			if(sPorts[comPortName].game == currentGame) {
 				sPorts[comPortName].comPort.write("b");
 			}
 		}
+		updateScreenOverview();
+		updateScreenCurrent();
+		updateAdmin();
 	});
 
 	socket.on('stopGame', function(data) {
+		isPlaying = false;
 		for(var comPortName in sPorts) {
 			if(sPorts[comPortName].game == data.value) {
 				sPorts[comPortName].comPort.write("s");
 			}
 		}
+		updateScreenOverview();
+		updateScreenCurrent();
+		updateAdmin();
 	});
 
-	socket.on('updateCurrent', function(data) {
-		screenSockets.emit('updateCurrent', {
-			playerName1: "Robot 1",
-			playerName2: "Robot 2",
-			playerPoints1: "5",
-			playerPoints2: "2",
-			title: "Capture the flag"
-		});
-	});
-
-	socket.on('updateOverview', function(data) {
-		screenSockets.emit('updateOverview', {
-			'game 1': {
-				playerName1: 'player 1',
-				playerPoints1: '2',
-				playerName2: 'player 2',
-				playerPoints2: '7'
-			},
-			'game 2': {
-				playerName1: 'player 1',
-				playerPoints1: '2',
-				playerName2: 'player 2',
-				playerPoints2: '7'
-			},
-			'game 3': {
-				playerName1: 'player 1',
-				playerPoints1: '2',
-				playerName2: 'player 2',
-				playerPoints2: '7'
-			}
-		});
-	});
 });
 
 
 var screenSockets = io.of('/screen');
 screenSockets.on('connection', function(socket) {
 	socket.emit('console', 'Welcome screen!');
-	console.log("Screen connected.");
+	log("Screen connected.", 2);
 });
 
 var serialport = require('serialport');
@@ -110,24 +83,25 @@ var sPorts = {};
 function initComPorts() {
 	serialport.list( function(err, ports) {
 		ports.forEach( function(port) {
-
-			sPorts[port.comName] = {
-				comPort: new SerialPort(port.comName, { baudrate:9600, parser: serialport.parsers.readline("\n") }, false),
-				robotName: "",
-				game: "",
-				state: "NOTREADY",
-				points: 0,
-				pingSend: 0,
-				pingRecieved: 0
-			};
-			io.sockets.emit('console', port.comName + "-> available.");
-
-			// console.log(port.comName + " is available.");
+			if(!(port.comName in sPorts)) {
+				sPorts[port.comName] = {
+					comPort: new SerialPort(port.comName, { baudrate:9600, parser: serialport.parsers.readline("\n") }, false),
+					isOpen: false,
+					robotName: "",
+					game: "",
+					state: "NOTREADY",
+					points: 0,
+					pingSend: 0,
+					pingRecieved: 0
+				};
+				log(port.comName + "-> available.", 1);
+			}
 		});
 		for(var comPort in sPorts) {
-			io.sockets.emit('console', comPort + "-> setting up");
-			// console.log("Trying to set up comport " + sPorts[i].comPort.path);
-			setupPortHandler(sPorts[comPort], comPort);
+			if(!comPort.isOpen) {
+				log(comPort + "-> setting up", 1);
+				setupPortHandler(sPorts[comPort], comPort);
+			}
 		}
 	});
 }
@@ -135,21 +109,21 @@ function initComPorts() {
 function setupPortHandler(robotObject, comPortName) {
 	var comPort = robotObject.comPort;
 	comPort.on("error", function(err) {
-		io.sockets.emit('console', comPortName + "-> " + err);
-		// console.log(comPort.path + "-> " + err);
-		sPorts.splice(i, 1);
+		log(comPortName + "-> On error:" + err, 2);
+		closeComPort(robotObject);
 	});
 
 	comPort.open(function(err) {
 		if (err) {
-			io.sockets.emit('console', comPortName + "-> " + err);
-			// console.log(err);
+			log(comPortName + "-> Open error: " + err, 2);
 			delete sPorts[comPortName];
 			return;
 		} else {
-			io.sockets.emit('console', comPortName + "-> port open");
-			comPort.write("h");
-			comPort.write("s");
+			log(comPortName + "-> Port open", 2);
+			comPort.isOpen = true;
+			comPort.write("h"); // get handshake
+			comPort.write("s"); // set gamestate to not started (s -> stop)
+			comPort.write("r"); // get readystate
 		}
 
 		comPort.on("data", function(data){
@@ -157,11 +131,8 @@ function setupPortHandler(robotObject, comPortName) {
 		});
 
 		comPort.on("close", function(err) {
-			io.sockets.emit('console', comPortName + "-> " + err);
-			io.sockets.emit('console', comPortName + "-> port closed");
-			// console.log(err);
-			// console.log(comPort.path + "-> port closed");
-			delete sPorts[comPortName];
+			log(comPortName + "-> Serialport closed: " + err, 3);
+			closeComPort(robotObject);
 		});
 	});
 }
@@ -171,39 +142,10 @@ function processData(data, robotObject) {
 		var json = JSON.parse(data);
 		switch(json.COMMAND) {
 			case "HANDSHAKE":
-				robotObject.robotName = json.NAME;
-				robotObject.game = json.GAME;
-				io.sockets.emit("game", robotObject.robotName + " has send handshake to play " + robotObject.game);
-				DB.robots.find({robotName: json.NAME}, function(err, robots) {
-					if(robots.length == 0) {
-						DB.robots.save({
-							robotName: json.NAME,
-							game: json.GAME,
-							state: robotObject.state,
-						}, function(err, saved) {
-							if(err) console.log(err);
-							if(!saved) console.log('not saved');
-						});
-					}
-				});
+				processHandshake(json, robotObject);
 				break;
 			case "STATE":
-				if (robotObject.robotName == "") {
-					robotObject.comPort.write("h");
-				} else {
-					robotObject.state = json.VALUE;
-					DB.robots.find({robotName: robotObject.robotName}, function(err, robots) {
-						if( robots.length == 0 ) {
-							console.log("Fatal error writing state to database, robot not found!");
-						} else {
-							DB.robots.update({robotName: robotObject.robotName}, {$set: {state: json.VALUE}}, function(err, updated) {
-								if( err || !updated ) console.log("Robot not updated");
-  								else console.log("Robot ready");
-							});
-						}
-
-					});
-				}
+				processStateChange(json, robotObject)
 				break;
 			case "POINT":
 				processPoint(robotObject);
@@ -212,33 +154,212 @@ function processData(data, robotObject) {
 				robotObject.pingRecieved = new Date().getTime();
 				break;
 			default:
-				io.sockets.emit('console', robotObject.comPort.path + "-> JSON not valid (" + json.COMMAND + ")");
+				log(robotObject.comPort.path + "-> JSON not valid (" + json.COMMAND + ")", 3);
 				// console.log(robotObject.comPort.path + "-> JSON not valid");
 				break;
 		}
 	} catch (e) {
-		io.sockets.emit('console', robotObject.comPort.path + "-> Error processing data: " + e);
+		log(robotObject.comPort.path + "-> Error processing data: " + e, 3);
 		// console.log(robotObject.comPort.path + "-> Error processing data: " + e);
 	}
 }
 
+
+function processHandshake(json, robotObject) {
+	robotObject.robotName = json.NAME;
+	robotObject.game = json.GAME;
+	log(robotObject.robotName + " has send handshake to play " + robotObject.game, 2);
+	DB.robots.update({ 	robotName: json.NAME }
+					,{ 	robotName: json.NAME,
+						game: json.GAME,
+						state: robotObject.state,
+						points: 0,
+						isAlive: true }
+					,{	upsert: true }
+					,	function(err) {
+							if(err) log(err, 2);
+					});
+	updateOverview();
+	updateAdmin();
+}
+
+function processStateChange(json, robotObject) {
+	if (robotObject.robotName == "") {
+		robotObject.comPort.write("h");
+	} else {
+		robotObject.state = json.VALUE;
+		DB.robots.update({ 	robotName: robotObject.robotName }
+						,{ 	state: json.VALUE }
+						, 	function(err) {
+								if(err) log(err, 2);
+						});
+	}
+	updateAdmin();
+}
+
 var timedGames = ['Timed game 1', 'Timed game 2'];
 
-var processPoint = function(robotObject) {
-	for(var timedGame in timedGames) {
-		if(robotObject.game == timedGame) {
+function processPoint(robotObject) {
+	if(robotObject.game == currentGame && isPlaying == true) {
+		for(var timedGame in timedGames) {
+			if(robotObject.game == timedGame) {
 
-			return;
-		} else {
-			robotObject.points++;
-			DB.robots.update({robotName: robotObject.robotName}, {$set: {points: robotObject.points}}, function(err, updated) {
-				if(err||!updated) console.log(err);
-			});
-
-			return;
+				return;
+			} else {
+				robotObject.points++;
+				DB.robots.update({	robotName: robotObject.robotName}
+								,{	$set: {points: robotObject.points}}
+								, 	function(err, updated) {
+										if(err||!updated) log(err, 3);
+								});
+				updateScreenCurrent();
+				return;
+			}
 		}
+	} else {
+		log(robotObject.robotName + " tried to score a point without even playing the game.", 3);
 	}
 }
+
+
+var currentGame = "";
+var isPlaying = false;
+
+function updateAdmin() {
+	var games = {};
+	DB.robots.find().forEach(function(err, robot) {
+		if(robot.game == currentGame) {
+			games[robot.game]["isPlaying"] = isPlaying;
+			if(!(robot.game in games)) {
+				games[robot.game]["player1State"] = robot.state;
+				games[robot.game]["player1Alive"] = robot.isAlive;
+				games[robot.game]["player1"] = robot.robotName;
+				games[robot.game]["mayStart"] = false;
+			} else {
+				games[robot.game]["player2State"] = robot.state;
+				games[robot.game]["player2Alive"] = robot.isAlive;
+				games[robot.game]["player2"] = robot.robotName;
+				if(robot.state == "READY" && games[robot.game]["player1State"] == "READY"){
+					games[robot.game]["mayStart"] = !isPlaying;
+				} else {
+					games[robot.game]["mayStart"] = false;
+				}
+			}
+		}
+		
+	});
+	adminSocket.emit("updateControlPanel", games);
+}
+
+function updateScreenOverview() {
+	var games = {};
+	DB.robots.find().forEach(function(err, robot) {
+		if(!robot)
+			return;
+		if(robot.game != currentGame) {
+			if(!(robot.game in games)) {
+				games[robot.game]["player1Alive"] = robot.isAlive;
+				games[robot.game]["playerName1"] = robot.robotName;
+				games[robot.game]["playerPoints1"] = robot.points;
+			} else {
+				games[robot.game]["player2Alive"] = robot.isAlive;
+				games[robot.game]["playerName2"] = robot.robotName;
+				games[robot.game]["playerPoints2"] = robot.points;
+			}
+		}
+	});
+	screenSockets.emit("updateOverview", games);
+}
+
+function updateScreenCurrent() {
+	var game = {};
+	DB.robots.find().forEach(function(err, robot) {
+		if(!robot)
+			return;
+		if(robot.game == currentGame) {
+			if(!("title" in game)) {
+				game["title"] = robot.game;
+				game["player1Alive"] = robot.isAlive;
+				game["playerName1"] = robot.robotName;
+				game["playerPoints1"] = robot.points;
+			} else {
+				game["player2Alive"] = robot.isAlive;
+				game["playerName2"] = robot.robotName;
+				game["playerPoints2"] = robot.points;
+			}
+		}
+	});
+	screenSockets.emit("updateCurrent", game);
+}
+
+
+function closeComPort(comPortObject) {
+	if(comPortObject.game == currentGame) {
+		isPlaying = false;
+		for(var comPortName in sPorts) {
+			if(sPorts[comPortName].game == currentGame) {
+				sPorts[comPortName].comPort.write("s");
+			}
+		}
+	}
+	DB.robots.update({	robotName: robotObject.robotName }
+					,{	isAlive: false }
+					,	function(err, updated) {
+							if(err||!updated) log(err, 3);
+					});
+	comPortObject.comPort.close(function(err) {
+		delete sPorts[comPortName];
+	});
+	updateScreenCurrent();
+	updateScreenOverview();
+	updateScreenOverview();
+}
+
+function log(message, level) {
+	if(level >= LOGLEVEL) {
+		var preparedMessage = getDateTime() + " -> " + message;
+		adminSockets.emit('console', preparedMessage);
+		DB.log.insert({
+			"timeStamp": getDateTime(),
+			"message": message
+		}, function(err, inserted) {
+			if(err) console.log(err);
+			// if(inserted) console.log(inserted);
+		});
+	}
+}
+
+function getDateTime() {
+    var now     = new Date(); 
+    var year    = now.getFullYear();
+    var month   = now.getMonth()+1; 
+    var day     = now.getDate();
+    var hour    = now.getHours();
+    var minute  = now.getMinutes();
+    var second  = now.getSeconds();
+
+    if(month.toString().length == 1) {
+        var month = '0'+month;
+    }
+    if(day.toString().length == 1) {
+        var day = '0'+day;
+    }   
+    if(hour.toString().length == 1) {
+        var hour = '0'+hour;
+    }
+    if(minute.toString().length == 1) {
+        var minute = '0'+minute;
+    }
+    if(second.toString().length == 1) {
+        var second = '0'+second;
+    }   
+    var dateTime = year+'-'+month+'-'+day+' '+hour+':'+minute+':'+second;   
+    
+    return dateTime;
+}
+
+
+// = = = = timers = = = = 
 
 var sendPing = setInterval(function() {
 	for(var comPortName in sPorts) {
@@ -253,24 +374,21 @@ var sendPing = setInterval(function() {
 	}
 }, 500);
 
-// var checkPing = setInterval(function() {
-// 	for(var i = 0; i < sPorts.length; i++) {
-// 		if(sPorts[i].robotName != "") {
-// 			if((sPorts[i].pingSend - sPorts[i].pingRecieved) >= 1000) {
-// 				io.sockets.emit("game", sPorts[i].robotName + " has lost connection.");
-// 				var closeConnections = true;
-// 				sPorts[i].comPort.close(function(err) {
-// 					sPorts.splice(i, 1);
-// 				});
-// 			}
-// 		}
-// 	}
-// 	if(closeConnections) {
-// 		for(var i = sPorts.length - 1; i > -1; i--) {
-// 			sPorts[i].comPort.close(function(err) {
-// 				sPorts.splice(i, 1);
-// 			});
-// 		}
-// 		io.sockets.emit("console", "Re init all connections");
-// 	}
-// }, 2000);
+var checkPing = setInterval(function() {
+	// for(var i = 0; i < sPorts.length; i++) {
+	for(var comPortName in sPorts) {
+		if(sPorts[comPortName].robotName != "") {
+			if((sPorts[comPortName].pingSend - sPorts[comPortName].pingRecieved) >= 1000) {
+				log(sPorts[comPortName].robotName + " has lost connection.");
+				closeComPort(sPorts[comPortName]);
+				updateScreenCurrent();
+				updateScreenOverview();
+			}
+		}
+	}
+	
+}, 2000);
+
+var checkNewComports = setInterval(function() {
+	//initComPorts();
+}, 2000);
