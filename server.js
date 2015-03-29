@@ -179,7 +179,7 @@ function processHandshake(json, robotObject) {
 					,	function(err) {
 							if(err) log(err, 2);
 					});
-	updateOverview();
+	updateScreenOverview();
 	updateAdmin();
 }
 
@@ -229,7 +229,6 @@ function updateAdmin() {
 	var games = {};
 	DB.robots.find().forEach(function(err, robot) {
 		if(robot.game == currentGame) {
-			games[robot.game]["isPlaying"] = isPlaying;
 			if(!(robot.game in games)) {
 				games[robot.game]["player1State"] = robot.state;
 				games[robot.game]["player1Alive"] = robot.isAlive;
@@ -245,10 +244,11 @@ function updateAdmin() {
 					games[robot.game]["mayStart"] = false;
 				}
 			}
+			games[robot.game]["isPlaying"] = isPlaying;
 		}
-		
+
 	});
-	adminSocket.emit("updateControlPanel", games);
+	adminSockets.emit("updateControlPanel", games);
 }
 
 function updateScreenOverview() {
@@ -330,9 +330,9 @@ function log(message, level) {
 }
 
 function getDateTime() {
-    var now     = new Date(); 
+    var now     = new Date();
     var year    = now.getFullYear();
-    var month   = now.getMonth()+1; 
+    var month   = now.getMonth()+1;
     var day     = now.getDate();
     var hour    = now.getHours();
     var minute  = now.getMinutes();
@@ -343,7 +343,7 @@ function getDateTime() {
     }
     if(day.toString().length == 1) {
         var day = '0'+day;
-    }   
+    }
     if(hour.toString().length == 1) {
         var hour = '0'+hour;
     }
@@ -352,19 +352,21 @@ function getDateTime() {
     }
     if(second.toString().length == 1) {
         var second = '0'+second;
-    }   
-    var dateTime = year+'-'+month+'-'+day+' '+hour+':'+minute+':'+second;   
-    
+    }
+    var dateTime = year+'-'+month+'-'+day+' '+hour+':'+minute+':'+second;
+
     return dateTime;
 }
 
 
-// = = = = timers = = = = 
+// = = = = timers = = = =
 
 var sendPing = setInterval(function() {
 	for(var comPortName in sPorts) {
 		try {
-			if(sPorts[comPortName].robotName != "") {
+			if(sPorts[comPortName].robotName == "") {
+				sPorts[comPortName].comPort.write("h");
+			} else {
 				sPorts[comPortName].comPort.write("p");
 				sPorts[comPortName].pingSend = new Date().getTime();
 			}
@@ -377,7 +379,9 @@ var sendPing = setInterval(function() {
 var checkPing = setInterval(function() {
 	// for(var i = 0; i < sPorts.length; i++) {
 	for(var comPortName in sPorts) {
-		if(sPorts[comPortName].robotName != "") {
+		if(sPorts[comPortName].robotName == "") {
+			sPorts[comPortName].comPort.write("h");
+		} else {
 			if((sPorts[comPortName].pingSend - sPorts[comPortName].pingRecieved) >= 1000) {
 				log(sPorts[comPortName].robotName + " has lost connection.");
 				closeComPort(sPorts[comPortName]);
@@ -386,7 +390,7 @@ var checkPing = setInterval(function() {
 			}
 		}
 	}
-	
+
 }, 2000);
 
 var checkNewComports = setInterval(function() {
