@@ -11,33 +11,34 @@
 			    var socket = io.connect('http://localhost:3700/admin');
 
 			    socket.on('console', function (data) {
-			        $('.console').prepend("<p>" + JSON.stringify(data) + "</p>");
+			        $('.console').prepend("<pre>" + JSON.stringify(data) + "</pre>");
 			    });
 
 				socket.on('updateControlPanel', function (data) {
 					var html = "";
 					for(var game in data) {
-						if(game.isPlaying) {
+						console.log(JSON.stringify(game));
+						if(data[game].isPlaying) {
 							html += "<div class='game active'>";
 						} else {
 							html += "<div class='game'>";
 						}
-						html +=	"	<p class='gameTitle'>Game title: " + game.title + "</p>";
-						if(game.player1Alive) {
-							html += "<p class='playerName active" + game.player1State + "'>Player 1: " + game.player1 + "</p>";
+						html +=	"	<p class='gameTitle'>Game title: " + game + "</p>";
+						if(data[game].player1Alive) {
+							html += "<p class='playerName active" + data[game].player1State + "'>Player 1: " + data[game].player1 + "</p>";
 						} else {
-							html += "<p class='playerName'>Player 1: " + game.player1 + "</p>";
+							html += "<p class='playerName'>Player 1: " + data[game].player1 + "</p>";
 						}
-						if(game.player2Alive) {
-							html += "<p class='playerName active" + game.player2State + "'>Player 2: " + game.player2 + "</p>";
+						if(data[game].player2Alive) {
+							html += "<p class='playerName active" + data[game].player2State + "'>Player 2: " + data[game].player2 + "</p>";
 						} else {
-							html += "<p class='playerName'>Player 2: " + game.player2 + "</p>";
+							html += "<p class='playerName'>Player 2: " + data[game].player2 + "</p>";
 						}
-						if(game.mayStart) {
-							html += "<a href='#' class='startGame' data-game='" + game.title + "'>Start game</a>&nbsp;";
-						} 
-						if(game.isPlaying) {
-							html += "<a href='#' class='stopGame' data-game='" + game.title + "'>Stop game</a>";
+						if(data[game].mayStart) {
+							html += "<a href='#' class='startGame' data-game='" + data[game].title + "'>Start game</a>&nbsp;";
+						}
+						if(data[game].isPlaying) {
+							html += "<a href='#' class='stopGame' data-game='" + data[game].title + "'>Stop game</a>";
 						}
 						html += "</div>";
 						$('.control').html(html);
@@ -101,7 +102,7 @@
 				</div>
 				<div class="col-md-5">
 					<h2>Console</h2>
-					<div class="well console">
+					<div class="console">
 
 					</div>
 				</div>

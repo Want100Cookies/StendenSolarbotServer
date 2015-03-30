@@ -85,7 +85,7 @@ function initComPorts() {
 		ports.forEach( function(port) {
 			if(!(port.comName in sPorts)) {
 				sPorts[port.comName] = {
-					comPort: new SerialPort(port.comName, { baudrate:9600, parser: serialport.parsers.readline("\n") }, false),
+					comPort: new SerialPort(port.comName, { baudrate:9600 }, false),
 					isOpen: false,
 					robotName: "",
 					game: "",
@@ -101,6 +101,8 @@ function initComPorts() {
 			if(!comPort.isOpen) {
 				log(comPort + "-> setting up", 1);
 				setupPortHandler(sPorts[comPort], comPort);
+			} else {
+				log(comPort + "-> already open", 1);
 			}
 		}
 	});
@@ -109,7 +111,7 @@ function initComPorts() {
 function setupPortHandler(robotObject, comPortName) {
 	var comPort = robotObject.comPort;
 	comPort.on("error", function(err) {
-		log(comPortName + "-> On error:" + err, 2);
+		log(comPortName + "-> On error: " + err, 2);
 		closeComPort(robotObject);
 	});
 
@@ -127,6 +129,7 @@ function setupPortHandler(robotObject, comPortName) {
 		}
 
 		comPort.on("data", function(data){
+			//log(comPortName + "-> Data: " + data, 3);
 			processData(data, robotObject, comPortName);
 		});
 
@@ -137,30 +140,38 @@ function setupPortHandler(robotObject, comPortName) {
 	});
 }
 
+var receivedData = "";
+
 function processData(data, robotObject) {
-	try {
-		var json = JSON.parse(data);
-		switch(json.COMMAND) {
-			case "HANDSHAKE":
-				processHandshake(json, robotObject);
-				break;
-			case "STATE":
-				processStateChange(json, robotObject)
-				break;
-			case "POINT":
-				processPoint(robotObject);
-				break;
-			case "PING":
-				robotObject.pingRecieved = new Date().getTime();
-				break;
-			default:
-				log(robotObject.comPort.path + "-> JSON not valid (" + json.COMMAND + ")", 3);
-				// console.log(robotObject.comPort.path + "-> JSON not valid");
-				break;
+	receivedData += data;
+	if (receivedData.indexOf('{') >= 0 && receivedData.indexOf('}') >= 0) {
+		data = receivedData;
+		receivedData = "";
+		try {
+			var json = JSON.parse(data);
+			switch(json.COMMAND) {
+				case "HANDSHAKE":
+					processHandshake(json, robotObject);
+					robotObject.comPort.write("p");
+					break;
+				case "STATE":
+					processStateChange(json, robotObject)
+					break;
+				case "POINT":
+					processPoint(robotObject);
+					break;
+				case "PING":
+					robotObject.pingRecieved = new Date().getTime();
+					break;
+				default:
+					log(robotObject.comPort.path + "-> JSON not valid (" + json.COMMAND + ")", 3);
+					// console.log(robotObject.comPort.path + "-> JSON not valid");
+					break;
+			}
+		} catch (e) {
+			log(robotObject.comPort.path + "-> Error processing data: " + e + " !===! the data: " + data, 3);
+			// console.log(robotObject.comPort.path + "-> Error processing data: " + e);
 		}
-	} catch (e) {
-		log(robotObject.comPort.path + "-> Error processing data: " + e, 3);
-		// console.log(robotObject.comPort.path + "-> Error processing data: " + e);
 	}
 }
 
@@ -222,14 +233,15 @@ function processPoint(robotObject) {
 }
 
 
-var currentGame = "";
+var currentGame = "No game is playing";
 var isPlaying = false;
 
 function updateAdmin() {
 	var games = {};
 	DB.robots.find().forEach(function(err, robot) {
-		if(robot.game == currentGame) {
+		if(robot != null) {
 			if(!(robot.game in games)) {
+				games[robot.game] = {};
 				games[robot.game]["player1State"] = robot.state;
 				games[robot.game]["player1Alive"] = robot.isAlive;
 				games[robot.game]["player1"] = robot.robotName;
@@ -246,9 +258,8 @@ function updateAdmin() {
 			}
 			games[robot.game]["isPlaying"] = isPlaying;
 		}
-
+		adminSockets.emit("updateControlPanel", games);
 	});
-	adminSockets.emit("updateControlPanel", games);
 }
 
 function updateScreenOverview() {
@@ -258,6 +269,7 @@ function updateScreenOverview() {
 			return;
 		if(robot.game != currentGame) {
 			if(!(robot.game in games)) {
+				games[robot.game] = {};
 				games[robot.game]["player1Alive"] = robot.isAlive;
 				games[robot.game]["playerName1"] = robot.robotName;
 				games[robot.game]["playerPoints1"] = robot.points;
@@ -294,7 +306,13 @@ function updateScreenCurrent() {
 
 
 function closeComPort(comPortObject) {
-	if(comPortObject.game == currentGame) {
+	var game = comPortObject.game;
+	var name = comPortObject.robotName;
+	comPortObject.robotName = "";
+	comPortObject.comPort.close(function(err) {
+		delete sPorts[comPortName];
+	});
+	if(game == currentGame) {
 		isPlaying = false;
 		for(var comPortName in sPorts) {
 			if(sPorts[comPortName].game == currentGame) {
@@ -302,14 +320,12 @@ function closeComPort(comPortObject) {
 			}
 		}
 	}
-	DB.robots.update({	robotName: robotObject.robotName }
+	DB.robots.update({	robotName: name }
 					,{	isAlive: false }
+					,{	upsert: false }
 					,	function(err, updated) {
-							if(err||!updated) log(err, 3);
+							if(err||!updated) log("Error updating database: " + err, 3);
 					});
-	comPortObject.comPort.close(function(err) {
-		delete sPorts[comPortName];
-	});
 	updateScreenCurrent();
 	updateScreenOverview();
 	updateScreenOverview();
@@ -323,7 +339,7 @@ function log(message, level) {
 			"timeStamp": getDateTime(),
 			"message": message
 		}, function(err, inserted) {
-			if(err) console.log(err);
+			if(err) console.log("This is an error logging error: " + err);
 			// if(inserted) console.log(inserted);
 		});
 	}
@@ -363,15 +379,9 @@ function getDateTime() {
 
 var sendPing = setInterval(function() {
 	for(var comPortName in sPorts) {
-		try {
-			if(sPorts[comPortName].robotName == "") {
-				sPorts[comPortName].comPort.write("h");
-			} else {
-				sPorts[comPortName].comPort.write("p");
-				sPorts[comPortName].pingSend = new Date().getTime();
-			}
-		} catch(e) {
-			console.log(e);
+		if(sPorts[comPortName].robotName != "") {
+			sPorts[comPortName].comPort.write("p");
+			sPorts[comPortName].pingSend = new Date().getTime();
 		}
 	}
 }, 500);
@@ -379,9 +389,7 @@ var sendPing = setInterval(function() {
 var checkPing = setInterval(function() {
 	// for(var i = 0; i < sPorts.length; i++) {
 	for(var comPortName in sPorts) {
-		if(sPorts[comPortName].robotName == "") {
-			sPorts[comPortName].comPort.write("h");
-		} else {
+		if(sPorts[comPortName].robotName != "") {
 			if((sPorts[comPortName].pingSend - sPorts[comPortName].pingRecieved) >= 1000) {
 				log(sPorts[comPortName].robotName + " has lost connection.");
 				closeComPort(sPorts[comPortName]);
