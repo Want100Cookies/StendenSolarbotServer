@@ -311,8 +311,7 @@ function closeComPort(comPortObject) {
 	comPortObject.robotName = "";
 	comPortObject.comPort.close(function(err) {
 		delete sPorts[comPortName];
-	});
-	if(game == currentGame) {
+if(game == currentGame) {
 		isPlaying = false;
 		for(var comPortName in sPorts) {
 			if(sPorts[comPortName].game == currentGame) {
@@ -329,6 +328,8 @@ function closeComPort(comPortObject) {
 	updateScreenCurrent();
 	updateScreenOverview();
 	updateScreenOverview();
+	});
+	
 }
 
 function log(message, level) {
