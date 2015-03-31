@@ -1,22 +1,33 @@
 #include "Arduino.h"
 #include "ServerLib.h"
-#include <SoftwareSerial.h>
+#include "SoftwareSerial.h"
 
-ServerLib::ServerLib(int rx, int tx, String naam, String game) : _bt(rx, tx) {
+/*
+ServerLib::ServerLib(int rx, int tx, String naam, String game) : _bt(SoftwareSerial(rx, tx)) {
 	_naam = naam;
 	_game = game;
 
+	//SoftwareSerial bt(rx, tx);
+	//_bt = &bt;
 	_bt.begin(9600);
 }
+*/
 
-ServerLib::ServerLib(SoftwareSerial serial, String naam, String game) : _bt(serial) {
+ServerLib::ServerLib(SoftwareSerial& serial, String naam, String game) : _bt(serial) {
 	_naam = naam;
 	_game = game;
 }
 
 void ServerLib::updateLoop() {
 	if(_bt.available() > 0) {
-		char data = _bt.peek();
+		int data = _bt.peek();
+
+		if(data < 0) { // arduino wtf zijn we aan het doen
+			Serial.print("hallo ik ben arduino in welkom bij jackass: ");
+			Serial.println(String(data, DEC) + " == " + String(_bt.read(), DEC));
+			return; // vraag me niet waarom maar dit werkt want ik weet het ook niet
+		}
+
 		bool found = true;
 
 		if(data == 'h') {

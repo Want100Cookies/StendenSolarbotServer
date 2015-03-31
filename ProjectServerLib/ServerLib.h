@@ -2,12 +2,12 @@
 #define ServerLib_h
 
 #include "Arduino.h"
-#include <SoftwareSerial.h>
+#include "SoftwareSerial.h"
 
 class ServerLib {
   public:
-    ServerLib(int rx, int tx, String naam, String game);
-    ServerLib(SoftwareSerial serial, String naam, String game);
+    //ServerLib(int rx, int tx, String naam, String game);
+    ServerLib(SoftwareSerial& serial, String naam, String game);
     void updateLoop();
     void setReadyState(bool state);
     bool hasGameStarted();
@@ -16,7 +16,7 @@ class ServerLib {
   private:
     String _naam;
     String _game;
-    SoftwareSerial _bt;
+    SoftwareSerial& _bt;
     bool _ready;
     bool _started;
     bool _connected;
