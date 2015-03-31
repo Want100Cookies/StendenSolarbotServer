@@ -30,7 +30,6 @@
 			    	} else {
 			    		$('.player2').attr('class', 'col-md-5 player2');
 			    	}
-			    	$('.currentGame').html(html);
 			    });
 
 			    socket.on('updateOverview', function (data) {
@@ -60,7 +59,21 @@
 			    	}
 			    	$('.overView').html(html);
 			    });
-				
+
+				socket.on("timer", function(data) {
+					if(data.status == "countDown") {
+						$(".timer").html("<h1>Get ready!</h1><h1>" + data.time + "</h1>");
+					} else if(data.status == "game") {
+						$(".timer").html("<h1><small>Game time:</small><br>" + data.time + "</h1>");
+					} else if(data.status == "begin"){
+						$(".timer").html("<h1>Begin!</h1>")
+					} else if(data.status == "empty"){
+						$(".timer").html("");
+					} else {
+						console.log("Error processing data on timer: " + JSON.stringify(data));
+					}
+				});
+
 			});
 		</script>
 		<style>
@@ -94,12 +107,16 @@
 				border-radius: 10px;
 				padding: 0;
 			}
+
+			.timer h1 {
+				text-align: center;
+			}
 		</style>
 	</head>
 	<body>
 		<div class="container">
 			<div class="row overView">
-					
+
 			</div>
 			<div class="row">
 				<div class="col-md-4">
@@ -121,6 +138,8 @@
 					<div class="col-md-5 player2">
 						<h2 class="text-center currentPlayerName2">x</h2>
 						<h2 class="text-center currentPlayerPoints2">0</h2>
+					</div>
+					<div class="col-md-12 timer">
 					</div>
 				</div>
 			</div>

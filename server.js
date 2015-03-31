@@ -42,25 +42,18 @@ adminSockets.on('connection', function(socket) {
 	});
 
 	socket.on('startGame', function(data) {
-		currentGame = data.value;
-		isPlaying = true;
-		for(var comPortName in sPorts) {
-			if(sPorts[comPortName].game == currentGame) {
-				sPorts[comPortName].comPort.write("b");
-			}
-		}
-		updateScreenOverview();
-		updateScreenCurrent();
-		updateAdmin();
+		startGame(data.value);
 	});
 
-	socket.on('stopGame', function(data) {
+	socket.on('stopGame', function() {
 		isPlaying = false;
 		for(var comPortName in sPorts) {
-			if(sPorts[comPortName].game == data.value) {
+			if(sPorts[comPortName].game == currentGame) {
 				sPorts[comPortName].comPort.write("s");
 			}
 		}
+		if(timedGames.indexOf(currentGame) > -1)
+			clearInterval(gameTimeInterval);
 		updateScreenOverview();
 		updateScreenCurrent();
 		updateAdmin();
@@ -215,7 +208,17 @@ function processPoint(robotObject) {
 	if(robotObject.game == currentGame && isPlaying == true) {
 		for(var timedGame in timedGames) {
 			if(robotObject.game == timedGame) {
-
+				clearInterval(gameTimeInterval);
+				robotObject.points++;
+				DB.robots.update({	robotName: robotObject.robotName}
+								,{	$set: {points: robotObject.points}}
+								, 	function(err, updated) {
+										if(err||!updated) log(err, 3);
+								});
+				for(var comName in sPorts) {
+					sPorts[comName].comPort.write("s");
+				}
+				isPlaying == false;
 				return;
 			} else {
 				robotObject.points++;
@@ -231,6 +234,52 @@ function processPoint(robotObject) {
 	} else {
 		log(robotObject.robotName + " tried to score a point without even playing the game.", 3);
 	}
+}
+
+function startGame(gameName) {
+	currentGame = gameName;
+	var time = 10;
+	var countDown = setInterval(function() {
+		screenSockets.emit("timer", { "status": "countDown", "time": time });
+		time--;
+		if(time == -1) {
+			clearInterval(countDown);
+			screenSockets.emit("timer", { "status": "begin" });
+			isPlaying = true;
+			for(var comPortName in sPorts) {
+				if(sPorts[comPortName].game == currentGame) {
+					sPorts[comPortName].comPort.write("b");
+				}
+			}
+			updateScreenOverview();
+			updateScreenCurrent();
+			updateAdmin();
+			if(timedGames.indexOf(currentGame) > -1) {
+				var gameStartTime = new Date().getTime(),
+					gameElapsedTimeSec = '0.0',
+					gameElapsedTimeMin = '0'
+
+				var gameTimeInterval = setInterval(function() {
+					var time = new Date().getTime() - gameStartTime;
+					gameElapsedTimeSec = Math.floor(time / 100) / 10;
+
+					if(gameElapsedTimeSec == 60) {
+						gameStartTime = new Date().getTime();
+						gameElapsedTimeMin++;
+					}
+
+					if(Math.round(gameElapsedTimeSec) == gameElapsedTimeSec)
+						gameElapsedTimeSec += '.0';
+
+					screenSockets.emit("timer", { "status": "game", "time": gameElapsedTimeMin + ":" + gameElapsedTimeSec });
+				}, 100);
+			} else {
+				setTimeout(function() {
+					screenSockets.emit("timer", { "status": "empty" });
+				}, 5000);
+			}
+		}
+	}, 1000);
 }
 
 
