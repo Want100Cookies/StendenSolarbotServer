@@ -34,9 +34,10 @@ adminSockets.on('connection', function(socket) {
 		socket.emit('console', sPorts);
 	});
 
-	socket.on('getHandshake', function(data) {
+	socket.on('getState', function(data) {
 		for(var comPortName in sPorts) {
-			sPorts[comPortName].comPort.write("h");
+			if(sPorts[comPortName].robotName != "")
+				sPorts[comPortName].comPort.write("r");
 		}
 	});
 
@@ -98,7 +99,7 @@ function initComPorts() {
 			}
 		});
 		for(var comPort in sPorts) {
-			if(!comPort.isOpen) {
+			if(!sPorts[comPort].isOpen) {
 				log(comPort + "-> setting up", 1);
 				setupPortHandler(sPorts[comPort], comPort);
 			} else {
@@ -122,7 +123,7 @@ function setupPortHandler(robotObject, comPortName) {
 			return;
 		} else {
 			log(comPortName + "-> Port open", 2);
-			comPort.isOpen = true;
+			robotObject.isOpen = true;
 			comPort.write("h"); // get handshake
 			comPort.write("s"); // set gamestate to not started (s -> stop)
 			comPort.write("r"); // get readystate
@@ -135,7 +136,7 @@ function setupPortHandler(robotObject, comPortName) {
 
 		comPort.on("close", function(err) {
 			log(comPortName + "-> Serialport closed: " + err, 3);
-			closeComPort(robotObject);
+			closeComPort(sPorts[comPortName]);
 		});
 	});
 }
@@ -310,25 +311,28 @@ function closeComPort(comPortObject) {
 	var name = comPortObject.robotName;
 	comPortObject.robotName = "";
 	comPortObject.comPort.close(function(err) {
-		delete sPorts[comPortName];
-	});
-	if(game == currentGame) {
-		isPlaying = false;
-		for(var comPortName in sPorts) {
-			if(sPorts[comPortName].game == currentGame) {
-				sPorts[comPortName].comPort.write("s");
+		if(err) log(name + " -> Error closing comport:: " + err);
+		if(game == currentGame) {
+			isPlaying = false;
+			for(var comPortName in sPorts) {
+				if(sPorts[comPortName].game == currentGame) {
+					sPorts[comPortName].comPort.write("s");
+				}
 			}
 		}
-	}
-	DB.robots.update({	robotName: name }
-					,{	isAlive: false }
-					,{	upsert: false }
-					,	function(err, updated) {
-							if(err||!updated) log("Error updating database: " + err, 3);
-					});
-	updateScreenCurrent();
-	updateScreenOverview();
-	updateScreenOverview();
+		if(name != "") {
+			DB.robots.update({	robotName: name }
+							,{	isAlive: false }
+							,{	upsert: false }
+							,	function(err, updated) {
+									if(err||!updated) log("Error updating database: " + err, 3);
+							});
+		}
+		delete sPorts[comPortName];
+		updateScreenCurrent();
+		updateScreenOverview();
+		updateScreenOverview();
+	});
 }
 
 function log(message, level) {

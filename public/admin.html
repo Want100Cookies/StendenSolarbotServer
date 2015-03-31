@@ -51,8 +51,8 @@
 				$('.current').click(function() {
 					socket.emit('listActive', {});
 				});
-				$('.handshake').click(function() {
-					socket.emit('getHandshake', {});
+				$('.state').click(function() {
+					socket.emit('getState', {});
 				});
 				$('.startGame').click(function() {
 					var game = $(this).data("game");
@@ -90,7 +90,7 @@
 								<a class="current" href="#">Get sPorts variable (debugging)</a>
 							</li>
 							<li>
-								<a class="handshake" href="#">Get handshake</a>
+								<a class="state" href="#">Get handshake</a>
 							</li>
 						</ul>
 					</div>

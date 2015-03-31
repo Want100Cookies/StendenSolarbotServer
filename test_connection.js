@@ -2,16 +2,12 @@ var serialport = require('serialport');
 var SerialPort = serialport.SerialPort;
 var readData;
 
-comPort = new SerialPort("COM6", { baudrate:9600 }, false);
+comPort = new SerialPort("COM8", { baudrate:9600 }, false);
 
 comPort.open(function(err) {
 		if (err) {
 			console.log("not open");
 			return;
-		} else {
-			comPort.write("h"); // get handshake
-			comPort.write("s"); // set gamestate to not started (s -> stop)
-			comPort.write("r"); // get readystate
 		}
 
 		comPort.on("data", function(data){
