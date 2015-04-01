@@ -4,7 +4,7 @@ SoftwareSerial BT(7, 6); // tx pin, rx pin
 ServerLib server(BT, "Robot naam", "Game naam");
 
 void setup() {
-  BT.gegin(9600);
+  BT.begin(9600);
   
 }
 
