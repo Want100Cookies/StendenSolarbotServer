@@ -1,3 +1,4 @@
+#include <SoftwareSerial.h>
 #include <ServerLib.h>
 
 SoftwareSerial BT(7, 6); // tx pin, rx pin
