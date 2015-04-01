@@ -6,7 +6,8 @@
 		"socket.io": "latest",
 		"express": "latest",
 		"serialport": "latest",
-		"mongojs": "latest"
+		"mongojs": "latest",
+		"serve-static": "latest"
 	},
 	"author": "Pascal Drewes"
 }

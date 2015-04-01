@@ -1,21 +1,21 @@
 var express = require("express");
+var serveStatic = require("serve-static");
+
 var app = express();
 
-
 var wPort = 3700;
+
 var DBurl = "mongodb://arduino_user:banaan@dbh54.mongolab.com:27547/arduino_server";
 var MongoJS = require("mongojs");
 var DB = MongoJS.connect(DBurl, ["robots", "log"]);
+
+DB.on("error", function(err) {
+	console.log("Database error: " + err);
+});
+
 var LOGLEVEL = 1; // 1 = all; 2 = debugging; 3 = just critical stuf
 
-
-app.get("/", function(req, res) {
-	res.sendfile("./public/screen.html");
-});
-
-app.get("/admin", function(req, res) {
-	res.sendfile("./public/admin.html");
-});
+app.use(serveStatic("./public/", { "index": ["index.html"] }));
 
 var io = require("socket.io").listen(app.listen(wPort));
 console.log("Listening on port " + wPort);

@@ -1,81 +1,14 @@
 <html>
 	<head>
 		<title>Admin console</title>
-		<script type="text/javascript" src="/socket.io/socket.io.js"></script>
+
 		<script type="text/javascript" src="https://code.jquery.com/jquery-2.1.3.min.js"></script>
-		<link href="//maxcdn.bootstrapcdn.com/bootstrap/3.3.4/css/bootstrap.min.css" rel="stylesheet">
-		<script src="//maxcdn.bootstrapcdn.com/bootstrap/3.3.4/js/bootstrap.min.js"></script>
-		<script type="text/javascript">
-			$(document).ready(function() {
+		<script type="text/javascript" src="/socket.io/socket.io.js"></script>
+		<script type="text/javascript" src="./admin.js"></script>
+		<script type="text/javascript" src="//maxcdn.bootstrapcdn.com/bootstrap/3.3.4/js/bootstrap.min.js"></script>
 
-			    var socket = io.connect('http://localhost:3700/admin');
-
-			    socket.on('console', function (data) {
-			        $('.console').prepend("<pre>" + JSON.stringify(data) + "</pre>");
-			    });
-
-				socket.on('updateControlPanel', function (data) {
-					var html = "";
-					for(var game in data) {
-						console.log(JSON.stringify(game));
-						if(data[game].isPlaying) {
-							html += "<div class='game active'>";
-						} else {
-							html += "<div class='game'>";
-						}
-						html +=	"	<p class='gameTitle'>Game title: " + game + "</p>";
-						if(data[game].player1Alive) {
-							html += "<p class='playerName active" + data[game].player1State + "'>Player 1: " + data[game].player1 + "</p>";
-						} else {
-							html += "<p class='playerName'>Player 1: " + data[game].player1 + "</p>";
-						}
-						if(data[game].player2Alive) {
-							html += "<p class='playerName active" + data[game].player2State + "'>Player 2: " + data[game].player2 + "</p>";
-						} else {
-							html += "<p class='playerName'>Player 2: " + data[game].player2 + "</p>";
-						}
-						if(data[game].mayStart) {
-							html += "<a href='#' class='startGame' data-game='" + data[game].title + "'>Start game</a>&nbsp;";
-						}
-						if(data[game].isPlaying) {
-							html += "<a href='#' class='stopGame' data-game='" + data[game].title + "'>Stop game</a>";
-						}
-						html += "</div>";
-						$('.control').html(html);
-					}
-				});
-
-				$('.init').click(function() {
-					socket.emit('initComPorts', {});
-				});
-				$('.current').click(function() {
-					socket.emit('listActive', {});
-				});
-				$('.state').click(function() {
-					socket.emit('getState', {});
-				});
-				$('.startGame').click(function() {
-					var game = $(this).data("game");
-					socket.emit('startGame', {value: game});
-				})
-				$('.stopGame').click(function() {
-					var game = $(this).data("game");
-					socket.emit('stopGame', {value: game});
-				})
-			});
-		</script>
-		<style>
-			.col-md-6 {
-				height: 100%;
-				position: relative;
-			}
-
-			.well {
-				max-width: 100%;
-				max-height: 100%;
-				overflow-x: scroll;
-			}
-		</style>
+		<link rel="stylesheet" href="//maxcdn.bootstrapcdn.com/bootstrap/3.3.4/css/bootstrap.min.css">
+		<link rel="stylesheet" href="main.css">
 	</head>
 	<body>
 		<div class="container">
