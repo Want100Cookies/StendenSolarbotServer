@@ -1,7 +1,7 @@
 #include <SoftwareSerial.h>
 #include <ServerLib.h>
 
-SoftwareSerial BT(7, 6); // tx pin, rx pin
+SoftwareSerial BT(7, 6); // Bluetooth: rx pin, tx pin
 ServerLib server(BT, "Robot naam", "Game naam");
 
 void setup() {
