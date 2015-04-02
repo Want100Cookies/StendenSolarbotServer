@@ -5,15 +5,31 @@ var app = express();
 
 var wPort = 3700;
 
-var DBurl = "mongodb://arduino_user:banaan@dbh54.mongolab.com:27547/arduino_server";
-var MongoJS = require("mongojs");
-var DB = MongoJS.connect(DBurl, ["robots", "log"]);
+// var DBurl = "mongodb://arduino_user:banaan@dbh54.mongolab.com:27547/arduino_server";
+// var MongoJS = require("mongojs");
+// var DB = MongoJS.connect(DBurl, ["robots", "log"]);
+//
+// DB.on("error", function(err) {
+// 	console.log("Database error: " + err);
+// });
 
-DB.on("error", function(err) {
-	console.log("Database error: " + err);
+var mysql = require("mysql");
+var DBmysql = mysql.createConnection({
+	host: "localhost",
+	user: "root",
+	password: "",
+	database: "arduino"
 });
 
-var LOGLEVEL = 3; // 1 = all; 2 = debugging; 3 = just critical stuf
+DBmysql.connect(function(err) {
+	if(err) {
+		console.log("Error connecting to mysql db: " + err.stack);
+		return;
+	}
+	console.log("Mysql DB conncted");
+});
+
+var LOGLEVEL = 1; // 1 = all; 2 = debugging; 3 = just critical stuf
 
 app.use(serveStatic("./public/", { "index": ["index.html"] }));
 
@@ -56,6 +72,16 @@ adminSockets.on('connection', function(socket) {
 		updateAdmin();
 	});
 
+	socket.on('getHandshake', function() {
+		for(var comPortName in sPorts) {
+			try {
+				sPorts[comPortName].comPort.write("h");
+			} catch(e) {
+				log(comPortName + " -> Error requesting handshake: " + e);
+			}
+		}
+	});
+
 });
 
 
@@ -76,7 +102,7 @@ function initComPorts() {
 		ports.forEach( function(port) {
 			if(!(port.comName in sPorts)) {
 				sPorts[port.comName] = {
-					comPort: new SerialPort(port.comName, { baudrate:9600, parser: serialport.parsers.readline("\r\n") }, false),
+					comPort: new SerialPort(port.comName, { baudrate:9600 }, false),
 					recievedData: "",
 					isOpen: false,
 					robotName: "",
@@ -118,11 +144,12 @@ function setupPortHandler(robotObject, comPortName) {
 			comPort.write("h"); // get handshake
 			comPort.write("s"); // set gamestate to not started (s -> stop)
 			comPort.write("r"); // get readystate
+			log(comPortName + "-> Requests send", 2);
 		}
 
 		comPort.on("data", function(data){
-			//log(comPortName + "-> Data: " + data, 3);
-			processData(data, robotObject, comPortName);
+			log(comPortName + "-> Data: " + data, 3);
+			//processData(data, robotObject, comPortName);
 		});
 
 		comPort.on("close", function(err) {
@@ -166,16 +193,20 @@ function processHandshake(json, robotObject) {
 	robotObject.robotName = json.NAME;
 	robotObject.game = json.GAME;
 	log(robotObject.robotName + " has send handshake to play " + robotObject.game, 2);
-	DB.robots.update({ 	robotName: json.NAME }
-					,{ 	robotName: json.NAME,
-						game: json.GAME,
-						state: robotObject.state,
-						points: 0,
-						isAlive: true }
-					,{	upsert: true }
-					,	function(err) {
-							if(err) log(err, 2);
-					});
+	// DB.robots.update({ 	robotName: json.NAME }
+	// 				,{ 	robotName: json.NAME,
+	// 					game: json.GAME,
+	// 					state: robotObject.state,
+	// 					points: 0,
+	// 					isAlive: true }
+	// 				,{	upsert: true }
+	// 				,	function(err) {
+	// 						if(err) log(err, 2);
+	// 				});
+	DBmysql.query("SELECT * FROM robots WHERE naam = ", [json.NAME], function(err, results) {
+		if(err) console.log(err);
+		console.log(results);
+	});
 	updateScreenOverview();
 	updateAdmin();
 }
@@ -380,13 +411,14 @@ function log(message, level) {
 	if(level >= LOGLEVEL) {
 		var preparedMessage = getDateTime() + " -> " + message;
 		adminSockets.emit('console', preparedMessage);
-		DB.log.insert({
-			"timeStamp": getDateTime(),
-			"message": message
-		}, function(err, inserted) {
-			if(err) console.log("This is an error logging error: " + err);
-			// if(inserted) console.log(inserted);
-		});
+		console.log(preparedMessage);
+		// DB.log.insert({
+		// 	"timeStamp": getDateTime(),
+		// 	"message": message
+		// }, function(err, inserted) {
+		// 	if(err) console.log("This is an error logging error: " + err);
+		// 	// if(inserted) console.log(inserted);
+		// });
 	}
 }
 

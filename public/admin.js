@@ -58,4 +58,8 @@ $(document).ready(function() {
         var game = $(this).data("game");
         socket.emit('stopGame', {value: game});
     });
+
+    $('.getHandshake').click(function() {
+        socket.emit('getHandshake', {});
+    })
 });
