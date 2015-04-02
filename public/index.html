@@ -1,46 +1,46 @@
 <html>
-	<head>
-		<title>Screen</title>
+<head>
+	<title>Screen</title>
 
-		<script type="text/javascript" src="https://code.jquery.com/jquery-2.1.3.min.js"></script>
-		<script type="text/javascript" src="/socket.io/socket.io.js"></script>
-		<script type="text/javascript" src="./screen.js"></script>
-		<script type="text/javascript" src="//maxcdn.bootstrapcdn.com/bootstrap/3.3.4/js/bootstrap.min.js"></script>
+	<script type="text/javascript" src="https://code.jquery.com/jquery-2.1.3.min.js"></script>
+	<script type="text/javascript" src="/socket.io/socket.io.js"></script>
+	<script type="text/javascript" src="./screen.js"></script>
+	<script type="text/javascript" src="//maxcdn.bootstrapcdn.com/bootstrap/3.3.4/js/bootstrap.min.js"></script>
 
-		<link rel="stylesheet" href="//maxcdn.bootstrapcdn.com/bootstrap/3.3.4/css/bootstrap.min.css">
-		<link rel="stylesheet" href="main.css">
+	<link rel="stylesheet" href="//maxcdn.bootstrapcdn.com/bootstrap/3.3.4/css/bootstrap.min.css">
+	<link rel="stylesheet" href="main.css">
 
-	</head>
-	<body>
-		<div class="container">
-			<div class="row overView">
+</head>
+<body>
+	<div class="container">
+		<div class="row overView">
 
+		</div>
+		<div class="row">
+			<div class="col-md-4">
+				<!-- <img src="http://10.110.110.24/videostream.cgi" class="videoStrem" alt="Videostream"> -->
+				<img src="http://img2.wikia.nocookie.net/__cb20140819130035/warthunder/images/5/5f/Placeholder.jpg" class="videoStream">
 			</div>
-			<div class="row">
-				<div class="col-md-4">
-					<!-- <img src="http://10.110.110.24/videostream.cgi" class="videoStrem" alt="Videostream"> -->
-					<img src="http://img2.wikia.nocookie.net/__cb20140819130035/warthunder/images/5/5f/Placeholder.jpg" class="videoStream">
+			<div class="col-md-8 currentGame">
+				<div class="col-md-12 page-header">
+					<h1><small>Huidige game:</small> <i class="currentGameTitle">geen</i></h1>
 				</div>
-				<div class="col-md-8 currentGame">
-					<div class="col-md-12 page-header">
-						<h1><small>Huidige game:</small> <i class="currentGameTitle">geen</i></h1>
-					</div>
-					<hr>
-					<div class="col-md-5 player1">
-						<h2 class="text-center currentPlayerName1">x</h2>
-						<h2 class="text-center currentPlayerPoints1">0</h2>
-					</div>
-					<div class="col-md-2">
-						<h3 class="text-center vs">vs</h3>
-					</div>
-					<div class="col-md-5 player2">
-						<h2 class="text-center currentPlayerName2">x</h2>
-						<h2 class="text-center currentPlayerPoints2">0</h2>
-					</div>
-					<div class="col-md-12 timer">
-					</div>
+				<hr>
+				<div class="col-md-5 player1">
+					<h2 class="text-center currentPlayerName1">x</h2>
+					<h2 class="text-center currentPlayerPoints1">0</h2>
+				</div>
+				<div class="col-md-2">
+					<h3 class="text-center vs">vs</h3>
+				</div>
+				<div class="col-md-5 player2">
+					<h2 class="text-center currentPlayerName2">x</h2>
+					<h2 class="text-center currentPlayerPoints2">0</h2>
+				</div>
+				<div class="col-md-12 timer">
 				</div>
 			</div>
 		</div>
-	</body>
+	</div>
+</body>
 </html>

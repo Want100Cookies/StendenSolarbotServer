@@ -1,55 +1,52 @@
 <html>
-	<head>
-		<title>Admin console</title>
+<head>
+	<title>Admin console</title>
 
-		<script type="text/javascript" src="https://code.jquery.com/jquery-2.1.3.min.js"></script>
-		<script type="text/javascript" src="/socket.io/socket.io.js"></script>
-		<script type="text/javascript" src="./admin.js"></script>
-		<script type="text/javascript" src="//maxcdn.bootstrapcdn.com/bootstrap/3.3.4/js/bootstrap.min.js"></script>
+	<script type="text/javascript" src="https://code.jquery.com/jquery-2.1.3.min.js"></script>
+	<script type="text/javascript" src="/socket.io/socket.io.js"></script>
+	<script type="text/javascript" src="./admin.js"></script>
+	<script type="text/javascript" src="//maxcdn.bootstrapcdn.com/bootstrap/3.3.4/js/bootstrap.min.js"></script>
 
-		<link rel="stylesheet" href="//maxcdn.bootstrapcdn.com/bootstrap/3.3.4/css/bootstrap.min.css">
-		<link rel="stylesheet" href="main.css">
-	</head>
-	<body>
-		<div class="container">
-			<nav class="navbar navbar-default">
-				<div class="container-fluid">
-					<div id="navbar" class="navbar-collapse collapse">
-						<ul class="nav navbar-nav">
-							<li>
-								<a class="init" href="#">Init comports</a>
-							</li>
-							<li>
-								<a class="current" href="#">Get sPorts variable (debugging)</a>
-							</li>
-							<li>
-								<a class="state" href="#">Get handshake</a>
-							</li>
-							<li>
-								<a href='#' class='startGame' data-game='non-timed game'>Start game</a>
-							</li>
-						</ul>
-					</div>
+	<link rel="stylesheet" href="//maxcdn.bootstrapcdn.com/bootstrap/3.3.4/css/bootstrap.min.css">
+	<link rel="stylesheet" href="main.css">
+</head>
+<body>
+	<div class="container">
+		<nav class="navbar navbar-default">
+			<div class="container-fluid">
+				<div id="navbar" class="navbar-collapse collapse">
+					<ul class="nav navbar-nav">
+						<li>
+							<a href="#" class="updateOverview">Update screen (overview)</a>
+						</li>
+						<li>
+							<a href="#" class="udpateCurrent">Update screen (current game)</a>
+						</li>
+						<li>
+							<a href="#" class="updateAdmin">Update admin</a>
+						</li>
+					</ul>
 				</div>
-			</nav>
-			<div class="row">
-				<div class="col-md-12">
-					<h1 class="page-header">Arduino games</h1>
-				</div>
-				<div class="col-md-5">
-					<h2>Console</h2>
-					<div class="console">
+			</div>
+		</nav>
+		<div class="row">
+			<div class="col-md-12">
+				<h1 class="page-header">Arduino games</h1>
+			</div>
+			<div class="col-md-5">
+				<h2>Console</h2>
+				<div class="console">
 
-					</div>
 				</div>
-				<div class="col-md-7">
-					<h2>Game control panel</h2>
-					<div class="control">
+			</div>
+			<div class="col-md-7">
+				<h2>Game control panel</h2>
+				<div class="control">
 
-					</div>
 				</div>
 			</div>
 		</div>
+	</div>
 
-	</body>
+</body>
 </html>

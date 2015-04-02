@@ -13,7 +13,7 @@ DB.on("error", function(err) {
 	console.log("Database error: " + err);
 });
 
-var LOGLEVEL = 1; // 1 = all; 2 = debugging; 3 = just critical stuf
+var LOGLEVEL = 3; // 1 = all; 2 = debugging; 3 = just critical stuf
 
 app.use(serveStatic("./public/", { "index": ["index.html"] }));
 
@@ -26,19 +26,16 @@ var adminSockets = io.of('/admin');
 adminSockets.on('connection', function(socket) {
 	socket.emit('console', 'Welcome');
 
-	socket.on('initComPorts', function(data) {
-		initComPorts();
+	socket.on('updateScreenOverview', function(data) {
+		updateScreenOverview();
 	});
 
-	socket.on('listActive', function(data) {
-		socket.emit('console', sPorts);
+	socket.on('updateScreenCurrent', function(data) {
+		updateScreenCurrent();
 	});
 
-	socket.on('getState', function(data) {
-		for(var comPortName in sPorts) {
-			if(sPorts[comPortName].robotName != "")
-				sPorts[comPortName].comPort.write("r");
-		}
+	socket.on('updateAdmin', function(data) {
+		updateAdmin();
 	});
 
 	socket.on('startGame', function(data) {
@@ -79,7 +76,8 @@ function initComPorts() {
 		ports.forEach( function(port) {
 			if(!(port.comName in sPorts)) {
 				sPorts[port.comName] = {
-					comPort: new SerialPort(port.comName, { baudrate:9600 }, false),
+					comPort: new SerialPort(port.comName, { baudrate:9600, parser: serialport.parsers.readline("\r\n") }, false),
+					recievedData: "",
 					isOpen: false,
 					robotName: "",
 					game: "",
@@ -134,39 +132,33 @@ function setupPortHandler(robotObject, comPortName) {
 	});
 }
 
-var receivedData = "";
-
 function processData(data, robotObject) {
-	receivedData += data;
-	if (receivedData.indexOf('{') >= 0 && receivedData.indexOf('}') >= 0) {
-		data = receivedData;
-		receivedData = "";
-		try {
-			var json = JSON.parse(data);
-			switch(json.COMMAND) {
-				case "HANDSHAKE":
-					processHandshake(json, robotObject);
-					robotObject.comPort.write("p");
-					break;
-				case "STATE":
-					processStateChange(json, robotObject)
-					break;
-				case "POINT":
-					processPoint(robotObject);
-					break;
-				case "PING":
-					robotObject.pingRecieved = new Date().getTime();
-					break;
-				default:
-					log(robotObject.comPort.path + "-> JSON not valid (" + json.COMMAND + ")", 3);
-					// console.log(robotObject.comPort.path + "-> JSON not valid");
-					break;
-			}
-		} catch (e) {
-			log(robotObject.comPort.path + "-> Error processing data: " + e + " !===! the data: " + data, 3);
-			// console.log(robotObject.comPort.path + "-> Error processing data: " + e);
+	try {
+		var json = JSON.parse(data);
+		switch(json.COMMAND) {
+			case "HANDSHAKE":
+				processHandshake(json, robotObject);
+				robotObject.comPort.write("p");
+				break;
+			case "STATE":
+				processStateChange(json, robotObject)
+				break;
+			case "POINT":
+				processPoint(robotObject);
+				break;
+			case "PING":
+				robotObject.pingRecieved = new Date().getTime();
+				break;
+			default:
+				log(robotObject.comPort.path + "-> JSON not valid (" + json.COMMAND + ")", 3);
+				// console.log(robotObject.comPort.path + "-> JSON not valid");
+				break;
 		}
+	} catch (e) {
+		log(robotObject.comPort.path + "-> Error processing data: " + e + " !===! the data: " + data, 3);
+		// console.log(robotObject.comPort.path + "-> Error processing data: " + e);
 	}
+
 }
 
 
@@ -315,22 +307,22 @@ function updateAdmin() {
 function updateScreenOverview() {
 	var games = {};
 	DB.robots.find().forEach(function(err, robot) {
-		if(!robot)
-			return;
-		if(robot.game != currentGame) {
-			if(!(robot.game in games)) {
-				games[robot.game] = {};
-				games[robot.game]["player1Alive"] = robot.isAlive;
-				games[robot.game]["playerName1"] = robot.robotName;
-				games[robot.game]["playerPoints1"] = robot.points;
-			} else {
-				games[robot.game]["player2Alive"] = robot.isAlive;
-				games[robot.game]["playerName2"] = robot.robotName;
-				games[robot.game]["playerPoints2"] = robot.points;
+		if(robot != null) {
+			if(robot.game != currentGame) {
+				if(!(robot.game in games)) {
+					games[robot.game] = {};
+					games[robot.game]["player1Alive"] = robot.isAlive;
+					games[robot.game]["playerName1"] = robot.robotName;
+					games[robot.game]["playerPoints1"] = robot.points;
+				} else {
+					games[robot.game]["player2Alive"] = robot.isAlive;
+					games[robot.game]["playerName2"] = robot.robotName;
+					games[robot.game]["playerPoints2"] = robot.points;
+				}
 			}
 		}
+		screenSockets.emit("updateOverview", games);
 	});
-	screenSockets.emit("updateOverview", games);
 }
 
 function updateScreenCurrent() {
@@ -455,5 +447,5 @@ var checkPing = setInterval(function() {
 }, 2000);
 
 var checkNewComports = setInterval(function() {
-	//initComPorts();
-}, 2000);
+	initComPorts();
+}, 3000);

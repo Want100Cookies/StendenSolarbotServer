@@ -27,7 +27,7 @@ $(document).ready(function() {
     socket.on('updateOverview', function (data) {
         var html = "";
         for(var game in data) {
-            html += "<div class='col-md-2'>" +
+            html += "<div class='col-md-2 smallGame'>" +
                     "	<div class='col-md-12'>" +
                     "		<h3>" + game + "</h3>" +
                     "	</div>";

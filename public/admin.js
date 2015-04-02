@@ -37,21 +37,25 @@ $(document).ready(function() {
         }
     });
 
-    $('.init').click(function() {
-        socket.emit('initComPorts', {});
+    $('.updateOverview').click(function() {
+        socket.emit('updateScreenOverview', {});
     });
-    $('.current').click(function() {
-        socket.emit('listActive', {});
+
+    $('.updateCurrent').click(function() {
+        socket.emit('updateScreenCurrent', {});
     });
-    $('.state').click(function() {
-        socket.emit('getState', {});
-    });
+
+    $('.updateAdmin').click(function() {
+        socket.emit('updateAdmin', {});
+    })
+
     $('.startGame').click(function() {
         var game = $(this).data("game");
         socket.emit('startGame', {value: game});
-    })
+    });
+
     $('.stopGame').click(function() {
         var game = $(this).data("game");
         socket.emit('stopGame', {value: game});
-    })
+    });
 });
