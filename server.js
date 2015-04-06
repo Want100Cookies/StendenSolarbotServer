@@ -5,28 +5,12 @@ var app = express();
 
 var wPort = 3700;
 
-// var DBurl = "mongodb://arduino_user:banaan@dbh54.mongolab.com:27547/arduino_server";
-// var MongoJS = require("mongojs");
-// var DB = MongoJS.connect(DBurl, ["robots", "log"]);
-//
-// DB.on("error", function(err) {
-// 	console.log("Database error: " + err);
-// });
+var DBurl = "mongodb://arduino_user:banaan@dbh54.mongolab.com:27547/arduino_server";
+var MongoJS = require("mongojs");
+var DB = MongoJS.connect(DBurl, ["robots", "log"]);
 
-var mysql = require("mysql");
-var DBmysql = mysql.createConnection({
-	host: "localhost",
-	user: "root",
-	password: "",
-	database: "arduino"
-});
-
-DBmysql.connect(function(err) {
-	if(err) {
-		console.log("Error connecting to mysql db: " + err.stack);
-		return;
-	}
-	console.log("Mysql DB conncted");
+DB.on("error", function(err) {
+	console.log("Database error: " + err);
 });
 
 var LOGLEVEL = 1; // 1 = all; 2 = debugging; 3 = just critical stuf
@@ -102,7 +86,7 @@ function initComPorts() {
 		ports.forEach( function(port) {
 			if(!(port.comName in sPorts)) {
 				sPorts[port.comName] = {
-					comPort: new SerialPort(port.comName, { baudrate:9600 }, false),
+					comPort: new SerialPort(port.comName, { baudrate:9600, parser: serialport.parsers.readline("\n") }, false),
 					recievedData: "",
 					isOpen: false,
 					robotName: "",
@@ -148,13 +132,13 @@ function setupPortHandler(robotObject, comPortName) {
 		}
 
 		comPort.on("data", function(data){
-			log(comPortName + "-> Data: " + data, 3);
-			//processData(data, robotObject, comPortName);
+			//log(comPortName + "-> Data: " + data, 3);
+			processData(data, robotObject, comPortName);
 		});
 
 		comPort.on("close", function(err) {
 			log(comPortName + "-> Serialport closed: " + err, 3);
-			closeComPort(sPorts[comPortName]);
+			closeComPort(robotObject);
 		});
 	});
 }
@@ -193,20 +177,16 @@ function processHandshake(json, robotObject) {
 	robotObject.robotName = json.NAME;
 	robotObject.game = json.GAME;
 	log(robotObject.robotName + " has send handshake to play " + robotObject.game, 2);
-	// DB.robots.update({ 	robotName: json.NAME }
-	// 				,{ 	robotName: json.NAME,
-	// 					game: json.GAME,
-	// 					state: robotObject.state,
-	// 					points: 0,
-	// 					isAlive: true }
-	// 				,{	upsert: true }
-	// 				,	function(err) {
-	// 						if(err) log(err, 2);
-	// 				});
-	DBmysql.query("SELECT * FROM robots WHERE naam = ", [json.NAME], function(err, results) {
-		if(err) console.log(err);
-		console.log(results);
-	});
+	DB.robots.update({ 	robotName: json.NAME }
+					,{ 	robotName: json.NAME,
+						game: json.GAME,
+						state: robotObject.state,
+						points: 0,
+						isAlive: true }
+					,{	upsert: true }
+					,	function(err) {
+							if(err) log(err, 2);
+					});
 	updateScreenOverview();
 	updateAdmin();
 }
@@ -382,6 +362,7 @@ function closeComPort(comPortObject) {
 	var game = comPortObject.game;
 	var name = comPortObject.robotName;
 	comPortObject.robotName = "";
+	comPortObject.isOpen = false;
 	comPortObject.comPort.close(function(err) {
 		if(err) log(name + " -> Error closing comport:: " + err);
 		if(game == currentGame) {
@@ -403,7 +384,7 @@ function closeComPort(comPortObject) {
 		delete sPorts[comPortName];
 		updateScreenCurrent();
 		updateScreenOverview();
-		updateScreenOverview();
+		updateAdmin();
 	});
 }
 
@@ -412,13 +393,13 @@ function log(message, level) {
 		var preparedMessage = getDateTime() + " -> " + message;
 		adminSockets.emit('console', preparedMessage);
 		console.log(preparedMessage);
-		// DB.log.insert({
-		// 	"timeStamp": getDateTime(),
-		// 	"message": message
-		// }, function(err, inserted) {
-		// 	if(err) console.log("This is an error logging error: " + err);
-		// 	// if(inserted) console.log(inserted);
-		// });
+		DB.log.insert({
+			"timeStamp": getDateTime(),
+			"message": message
+		}, function(err, inserted) {
+			if(err) console.log("This is an error logging error: " + err);
+			// if(inserted) console.log(inserted);
+		});
 	}
 }
 
@@ -470,8 +451,6 @@ var checkPing = setInterval(function() {
 			if((sPorts[comPortName].pingSend - sPorts[comPortName].pingRecieved) >= 1000) {
 				log(sPorts[comPortName].robotName + " has lost connection.");
 				closeComPort(sPorts[comPortName]);
-				updateScreenCurrent();
-				updateScreenOverview();
 			}
 		}
 	}
